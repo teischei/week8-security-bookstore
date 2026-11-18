@@ -1,0 +1,6 @@
+.venv/
+.semgrep-venv/
+__pycache__/
+.pytest_cache/
+bookstore.db
+.env
