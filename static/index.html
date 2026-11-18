@@ -8,12 +8,17 @@
   <h1>Reviews</h1>
   <div id="reviews"></div>
   <script>
-    // VULN: renders server-provided review text with innerHTML (stored XSS).
+    // render review text as text instead of markup
     async function load(bookId) {
       const res = await fetch('/reviews/' + bookId);
       const reviews = await res.json();
       const box = document.getElementById('reviews');
-      box.innerHTML = reviews.map(t => '<p>' + t + '</p>').join('');
+      box.replaceChildren();
+      reviews.forEach(t => {
+        const paragraph = document.createElement('p');
+        paragraph.textContent = t;
+        box.appendChild(paragraph);
+      });
     }
     load(1);
   </script>

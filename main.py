@@ -18,6 +18,7 @@ Run:
 Test (non-LLM paths only):
     pytest
 """
+import os
 import sqlite3
 from contextlib import closing
 from pathlib import Path
@@ -29,19 +30,18 @@ from pydantic import BaseModel
 
 DB_PATH = Path(__file__).parent / "bookstore.db"
 
-# VULN: hardcoded secret committed to source control
-API_KEY = "sk-live-8f3c1d9e2b7a4f60bookstore-demo-key"
-SECRET_TOKEN = "supersecret-admin-token"
+API_KEY = os.environ.get("BOOKSTORE_API_KEY")
+SECRET_TOKEN = os.environ.get("BOOKSTORE_SECRET_TOKEN")
 
 app = FastAPI(title="Vulnerable Bookstore")
 
-# VULN: wide-open CORS with credentials allowed
+allowed_origins = os.environ.get("BOOKSTORE_ALLOWED_ORIGINS", "http://localhost:8000")
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_origins=[origin.strip() for origin in allowed_origins.split(",")],
+    allow_credentials=False,
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type"],
 )
 
 OLLAMA_URL = "http://localhost:11434/api/generate"
@@ -96,10 +96,10 @@ class SummarizeIn(BaseModel):
 
 @app.get("/books")
 def search_books(q: str = ""):
-    # VULN: SQL injection — user input concatenated straight into the query
-    query = f"SELECT id, title, author FROM books WHERE title LIKE '%{q}%'"
     with closing(get_db()) as conn:
-        rows = conn.execute(query).fetchall()
+        rows = conn.execute(
+            "SELECT id, title, author FROM books WHERE title LIKE ?", (f"%{q}%",)
+        ).fetchall()
     return [dict(r) for r in rows]
 
 

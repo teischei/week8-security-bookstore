@@ -1,0 +1,11 @@
+rules:
+  - id: hardcoded-bookstore-secret
+    languages:
+      - generic
+    severity: ERROR
+    message: do not assign a credential value in source code
+    paths:
+      include:
+        - main.py
+    pattern-regex: |
+      (?m)^(API_KEY|SECRET_TOKEN)\s*=\s*["'][^"']+["']
