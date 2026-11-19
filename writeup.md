@@ -12,13 +12,34 @@ I used Codex to help make the changes and write the regression tests. I reviewed
 
 The SAST finding was in `main.py` lines 109 through 113. Before the fix, the book search built a SQL string with the search value inside it. I changed it to use `WHERE title LIKE ?` and passed the search value as a bound parameter. This keeps user input as data instead of letting it change the SQL statement. The new test sends SQL-looking text and confirms the API returns an empty result instead of every book. The formatted SQL rules disappeared from the final Semgrep scan.
 
+```diff
+-    query = f"SELECT id, title, author FROM books WHERE title LIKE '%{q}%'"
+     with closing(get_db()) as conn:
+-        rows = conn.execute(query).fetchall()
++        rows = conn.execute(
++            "SELECT id, title, author FROM books WHERE title LIKE ?", (f"%{q}%",)
++        ).fetchall()
+```
+
 ### Secrets fix
 
 The Secrets issue was in `main.py` lines 33 and 34. Before the fix, the API key and secret token were literal values in the source file. I replaced them with `BOOKSTORE_API_KEY` and `BOOKSTORE_SECRET_TOKEN` environment lookups. I added [.env.example](.env.example) with blank values and kept `.env` in `.gitignore` so local values are not committed. The local Semgrep rule in `semgrep-local/rules.yml` checks that these names are not assigned literal strings. It reports zero findings after the change.
 
+```diff
+-API_KEY = "<hardcoded starter value>"
+-SECRET_TOKEN = "<hardcoded starter value>"
++API_KEY = os.environ.get("BOOKSTORE_API_KEY")
++SECRET_TOKEN = os.environ.get("BOOKSTORE_SECRET_TOKEN")
+```
+
 ### SCA fix
 
 The SCA issue was in `requirements.txt` line 5. Before the fix, the project pinned `requests==2.25.1`, which brought in vulnerable versions of related packages. I upgraded it to `requests==2.34.2`. This gives the project the patched dependency chain. The final dependency audit reports no known vulnerabilities.
+
+```diff
+-requests==2.25.1
++requests==2.34.2
+```
 
 I also made two extra fixes. `main.py` lines 38 through 45 now use a localhost CORS allowlist with credentials disabled. `static/index.html` lines 16 through 20 creates paragraph elements and uses `textContent` instead of interpreting review text with `innerHTML`. The final automatic Semgrep scan reports 0 findings, the local secret rule reports 0 findings, and pytest reports 10 passing tests. The results are also in [part2-verification.md](docs/scans/part2-verification.md).
 
